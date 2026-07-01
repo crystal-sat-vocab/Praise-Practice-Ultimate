@@ -34,7 +34,38 @@ function updateAB(){const f=t=>t==null?'--:--':`${Math.floor(t/60)}:${String(Mat
 function changeTempo(n){$('#tempoNum').textContent=Math.max(30,parseInt($('#tempoNum').textContent)+n)}
 function tick(){ if(!audioCtx) audioCtx=new AudioContext(); const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.frequency.value=880; g.gain.value=.08; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+.05); }
 function toggleMetro(){ if(metro){clearInterval(metro);metro=null;$('#metroBtn').textContent='Start';return} tick(); metro=setInterval(tick,60000/parseInt($('#tempoNum').textContent)); $('#metroBtn').textContent='Stop';}
-async function toggleRecord(){ if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();$('#recBtn').textContent='🎙 开始录音';return} try{const stream=await navigator.mediaDevices.getUserMedia({audio:true}); chunks=[]; mediaRecorder=new MediaRecorder(stream); mediaRecorder.ondataavailable=e=>chunks.push(e.data); mediaRecorder.onstop=()=>{const blob=new Blob(chunks,{type:'audio/webm'}); $('#recAudio').src=URL.createObjectURL(blob); sessionRecords++; $('#recordCount').textContent=sessionRecords; stream.getTracks().forEach(t=>t.stop());}; mediaRecorder.start(); $('#recBtn').textContent='■ 停止录音';}catch(e){alert('浏览器没有取得麦克风权限，或当前环境不支持录音。')}}
+function setRecStatus(txt, cls=''){const el=$('#recStatus'); if(el){el.textContent=txt; el.className='recStatus '+cls;}}
+async function toggleRecord(){
+ if(mediaRecorder&&mediaRecorder.state==='recording'){
+   mediaRecorder.stop(); $('#recBtn').textContent='🎙 开始录音'; setRecStatus('正在生成回听音频…','on'); return;
+ }
+ if(!window.isSecureContext){setRecStatus('需要 https 网站才可录音','err'); alert('录音需要在 GitHub Pages 的 https 网址中打开，不能用 file:// 本地文件录音。'); return;}
+ if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){setRecStatus('此浏览器不支持麦克风录音','err'); alert('当前浏览器不支持网页录音。请用 Chrome/Edge，或在 iPhone/Mac 上更新 Safari 后重试。'); return;}
+ if(!window.MediaRecorder){setRecStatus('此浏览器不支持 MediaRecorder','err'); alert('当前浏览器不支持 MediaRecorder 录音。建议换 Chrome 浏览器打开 GitHub Pages 网址。'); return;}
+ try{
+   setRecStatus('正在请求麦克风权限…','on');
+   const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+   chunks=[];
+   const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? {mimeType:'audio/webm;codecs=opus'} : (MediaRecorder.isTypeSupported('audio/mp4') ? {mimeType:'audio/mp4'} : {});
+   mediaRecorder=new MediaRecorder(stream, options);
+   mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
+   mediaRecorder.onerror=()=>{setRecStatus('录音发生错误','err');};
+   mediaRecorder.onstop=()=>{
+     const type=mediaRecorder.mimeType || options.mimeType || 'audio/webm';
+     const blob=new Blob(chunks,{type});
+     $('#recAudio').src=URL.createObjectURL(blob);
+     sessionRecords++; $('#recordCount').textContent=sessionRecords;
+     stream.getTracks().forEach(t=>t.stop());
+     setRecStatus('录音已完成，可点击回听','on');
+   };
+   mediaRecorder.start();
+   $('#recBtn').textContent='■ 停止录音';
+   setRecStatus('正在录音…请唱歌，完成后点停止','on');
+ }catch(e){
+   const msg = e && e.name==='NotAllowedError' ? '麦克风权限被拒绝，请在浏览器地址栏允许麦克风' : '没有取得麦克风权限，或当前环境不支持录音';
+   setRecStatus(msg,'err'); alert(msg);
+ }
+}
 function buildRating(){const items=['音准','节奏','气息','咬字','情感表达','熟练度']; $('#ratingForm').innerHTML=items.map(i=>`<div class="rateItem"><label><span>${i}</span><b id="v-${i}">4</b></label><input type="range" min="1" max="5" value="4" data-rate="${i}"></div>`).join(''); $$('[data-rate]').forEach(r=>r.oninput=()=>$('#v-'+r.dataset.rate).textContent=r.value);}
 function saveRating(){const vals=[...$$('[data-rate]')].map(r=>+r.value); const total=vals.reduce((a,b)=>a+b,0); const score=Math.round(total/30*100); const rec={date:new Date().toLocaleString(),score,detail:vals}; state.history[current.id]=state.history[current.id]||[]; state.history[current.id].unshift(rec); state.history[current.id]=state.history[current.id].slice(0,50); $('#ratingResult').textContent=`本次综合：${score} 分`; touchPractice(3); renderHistory(); save();}
 function renderHistory(){const h=state.history[current.id]||[]; $('#history').innerHTML=h.length?h.map(x=>`<div class="histItem"><span>${x.date}</span><strong>${x.score} 分</strong></div>`).join(''):'<p style="color:var(--muted)">还没有评分记录。</p>';}
