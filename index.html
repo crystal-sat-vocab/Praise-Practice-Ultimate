@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Praise Practice Ultimate V2</title>
+  <title>Praise Practice Ultimate V2.3</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="brand"><div class="logo">♪</div><div><b>Praise Practice</b><span>Ultimate V2</span></div></div>
+      <div class="brand"><div class="logo">♪</div><div><b>Praise Practice</b><span>Ultimate V2.3</span></div></div>
       <nav>
         <button class="nav active" data-view="home">🏠 首页</button>
         <button class="nav" data-view="songs">🎼 全部诗歌</button>
@@ -83,7 +83,15 @@
               <strong>节拍器</strong><button id="minusTempo">−</button><span id="tempoNum">71</span><button id="plusTempo">+</button><button id="metroBtn">Start</button>
             </div>
             <div class="recorder">
-              <strong>录音回听</strong><button id="recBtn">🎙 开始录音</button><span id="recStatus" class="recStatus">等待录音</span><audio id="recAudio" controls></audio>
+              <strong>合成录音</strong>
+              <div class="mixSliders">
+                <label>伴奏音量 <input id="musicVol" type="range" min="0" max="1.5" step="0.05" value="0.85"><b id="musicVolNum">85%</b></label>
+                <label>人声音量 <input id="voiceVol" type="range" min="0" max="2" step="0.05" value="1.15"><b id="voiceVolNum">115%</b></label>
+              </div>
+              <button id="recBtn">🎙 开始合成录音</button><span id="recStatus" class="recStatus">等待录音</span>
+              <audio id="recAudio" controls></audio>
+              <a id="downloadRec" class="downloadLink" download="living-hope-mix-recording.webm" style="display:none">下载本次合成录音</a>
+              <small class="hint">提示：戴耳机练唱效果最好。系统会把伴奏音轨和麦克风人声在网页内部混合，不再靠麦克风去收外放钢琴声。</small>
             </div>
           </div>
 

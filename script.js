@@ -1,6 +1,7 @@
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const storeKey='ppu-v2';
 let songs=[], current=null, A=null, B=null, loop=false, metro=null, audioCtx=null, mediaRecorder=null, chunks=[], sessionRecords=0;
+let audioSourceNode=null, mixDest=null, musicGainNode=null, voiceGainNode=null, micStream=null, mixedBlobUrl=null;
 const state=load();
 function load(){try{return JSON.parse(localStorage.getItem(storeKey))||{favorites:{},history:{},notes:{},minutes:{},lastDate:null,streak:0,dark:false}}catch(e){return {favorites:{},history:{},notes:{},minutes:{},lastDate:null,streak:0,dark:false}}}
 function save(){localStorage.setItem(storeKey,JSON.stringify(state));renderStats();}
@@ -19,6 +20,7 @@ function bind(){
  $('#audio').onplay=()=>touchPractice(1);
  $('#minusTempo').onclick=()=>changeTempo(-1); $('#plusTempo').onclick=()=>changeTempo(1); $('#metroBtn').onclick=toggleMetro;
  $('#recBtn').onclick=toggleRecord;
+ $('#musicVol').oninput=updateMixVolumes; $('#voiceVol').oninput=updateMixVolumes;
  $$('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
  $('#saveRating').onclick=saveRating; $('#saveNotes').onclick=()=>{state.notes[current.id]=$('#notes').value;save();alert('笔记已保存')};
  $('#search').oninput=renderSongs;
@@ -35,34 +37,77 @@ function changeTempo(n){$('#tempoNum').textContent=Math.max(30,parseInt($('#temp
 function tick(){ if(!audioCtx) audioCtx=new AudioContext(); const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.frequency.value=880; g.gain.value=.08; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+.05); }
 function toggleMetro(){ if(metro){clearInterval(metro);metro=null;$('#metroBtn').textContent='Start';return} tick(); metro=setInterval(tick,60000/parseInt($('#tempoNum').textContent)); $('#metroBtn').textContent='Stop';}
 function setRecStatus(txt, cls=''){const el=$('#recStatus'); if(el){el.textContent=txt; el.className='recStatus '+cls;}}
+async function getMicStream(){
+ try{
+   return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+ }catch(e){
+   return await navigator.mediaDevices.getUserMedia({audio:true});
+ }
+}
+function updateMixVolumes(){
+ const mv=parseFloat($('#musicVol')?.value||0.85), vv=parseFloat($('#voiceVol')?.value||1.15);
+ if(musicGainNode) musicGainNode.gain.value=mv;
+ if(voiceGainNode) voiceGainNode.gain.value=vv;
+ if($('#musicVolNum')) $('#musicVolNum').textContent=Math.round(mv*100)+'%';
+ if($('#voiceVolNum')) $('#voiceVolNum').textContent=Math.round(vv*100)+'%';
+}
+async function prepareMixGraph(){
+ const audio=$('#audio');
+ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+ if(audioCtx.state==='suspended') await audioCtx.resume();
+ if(!audioSourceNode){
+   audioSourceNode=audioCtx.createMediaElementSource(audio);
+   musicGainNode=audioCtx.createGain();
+   audioSourceNode.connect(musicGainNode);
+   musicGainNode.connect(audioCtx.destination); // 让伴奏正常播放出来
+ }
+ mixDest=audioCtx.createMediaStreamDestination();
+ musicGainNode.connect(mixDest); // 同时把伴奏送进录音混音轨
+ micStream=await getMicStream();
+ const micSource=audioCtx.createMediaStreamSource(micStream);
+ voiceGainNode=audioCtx.createGain();
+ micSource.connect(voiceGainNode);
+ voiceGainNode.connect(mixDest); // 人声只进入录音，不回放到扬声器，避免啸叫
+ updateMixVolumes();
+ return mixDest.stream;
+}
 async function toggleRecord(){
  if(mediaRecorder&&mediaRecorder.state==='recording'){
-   mediaRecorder.stop(); $('#recBtn').textContent='🎙 开始录音'; setRecStatus('正在生成回听音频…','on'); return;
+   mediaRecorder.stop();
+   $('#recBtn').textContent='🎙 开始合成录音';
+   setRecStatus('正在生成合成录音…','on');
+   return;
  }
  if(!window.isSecureContext){setRecStatus('需要 https 网站才可录音','err'); alert('录音需要在 GitHub Pages 的 https 网址中打开，不能用 file:// 本地文件录音。'); return;}
  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){setRecStatus('此浏览器不支持麦克风录音','err'); alert('当前浏览器不支持网页录音。请用 Chrome/Edge，或在 iPhone/Mac 上更新 Safari 后重试。'); return;}
  if(!window.MediaRecorder){setRecStatus('此浏览器不支持 MediaRecorder','err'); alert('当前浏览器不支持 MediaRecorder 录音。建议换 Chrome 浏览器打开 GitHub Pages 网址。'); return;}
  try{
-   setRecStatus('正在请求麦克风权限…','on');
-   const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+   setRecStatus('正在建立伴奏 + 人声混音通道…','on');
+   const stream=await prepareMixGraph();
    chunks=[];
    const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? {mimeType:'audio/webm;codecs=opus'} : (MediaRecorder.isTypeSupported('audio/mp4') ? {mimeType:'audio/mp4'} : {});
    mediaRecorder=new MediaRecorder(stream, options);
    mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
-   mediaRecorder.onerror=()=>{setRecStatus('录音发生错误','err');};
+   mediaRecorder.onerror=()=>{setRecStatus('合成录音发生错误','err');};
    mediaRecorder.onstop=()=>{
      const type=mediaRecorder.mimeType || options.mimeType || 'audio/webm';
      const blob=new Blob(chunks,{type});
-     $('#recAudio').src=URL.createObjectURL(blob);
+     if(mixedBlobUrl) URL.revokeObjectURL(mixedBlobUrl);
+     mixedBlobUrl=URL.createObjectURL(blob);
+     $('#recAudio').src=mixedBlobUrl;
+     const dl=$('#downloadRec');
+     if(dl){dl.href=mixedBlobUrl; dl.style.display='inline-block'; dl.download=(current?.id||'praise')+'-mix-recording.webm';}
      sessionRecords++; $('#recordCount').textContent=sessionRecords;
-     stream.getTracks().forEach(t=>t.stop());
-     setRecStatus('录音已完成，可点击回听','on');
+     if(micStream){micStream.getTracks().forEach(t=>t.stop()); micStream=null;}
+     setRecStatus('合成录音已完成：伴奏 + 人声都已录入，可回听或下载','on');
    };
    mediaRecorder.start();
-   $('#recBtn').textContent='■ 停止录音';
-   setRecStatus('正在录音…请唱歌，完成后点停止','on');
+   if($('#audio').paused) await $('#audio').play();
+   $('#recBtn').textContent='■ 停止合成录音';
+   setRecStatus('正在合成录音…伴奏音轨和麦克风人声会一起保存','on');
  }catch(e){
-   const msg = e && e.name==='NotAllowedError' ? '麦克风权限被拒绝，请在浏览器地址栏允许麦克风' : '没有取得麦克风权限，或当前环境不支持录音';
+   console.error(e);
+   const msg = e && e.name==='NotAllowedError' ? '麦克风权限被拒绝，请在浏览器地址栏允许麦克风' : '合成录音启动失败。请刷新页面后再试，或换 Chrome/Edge 打开 GitHub Pages 网址。';
    setRecStatus(msg,'err'); alert(msg);
  }
 }
