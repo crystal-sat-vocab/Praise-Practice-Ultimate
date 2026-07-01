@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Praise Practice Ultimate V2</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">♪</div><div><b>Praise Practice</b><span>Ultimate V2</span></div></div>
+      <nav>
+        <button class="nav active" data-view="home">🏠 首页</button>
+        <button class="nav" data-view="songs">🎼 全部诗歌</button>
+        <button class="nav" data-view="practice">🎤 今日练歌</button>
+        <button class="nav" data-view="report">📊 成长报告</button>
+        <button class="nav" data-view="library">📖 敬拜资料库</button>
+        <button class="nav" data-view="settings">⚙ 设置</button>
+      </nav>
+      <div class="sideCard">
+        <span>🔥 连续练歌</span>
+        <strong id="streak">0 天</strong>
+        <small>每一次练习都会被记录在本机</small>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">赞美诗练歌平台</h1>
+          <p>Sing. Worship. Grow.｜歌唱 · 敬拜 · 成长</p>
+        </div>
+        <div class="topActions">
+          <button id="themeBtn" class="pill">🌙 深色</button>
+          <button id="resetBtn" class="pill danger">清除记录</button>
+        </div>
+      </header>
+
+      <section id="home" class="view show">
+        <div class="hero">
+          <div class="heroText">
+            <span class="tag">Today's Practice</span>
+            <h2>永活盼望 <em>Living Hope</em></h2>
+            <p>Key C · Tempo 71 · 4/4 · 敬拜 / 盼望</p>
+            <div class="heroButtons">
+              <button class="primary" data-open-song="living-hope">▶ Continue Practice</button>
+              <button class="ghost" id="favoriteBtn">☆ 收藏</button>
+            </div>
+          </div>
+          <div class="scoreOrb"><span id="avgScore">--</span><small>平均分</small></div>
+        </div>
+        <div class="grid cards">
+          <article><span>🎵 歌曲</span><strong id="songCount">1</strong><small>当前曲库</small></article>
+          <article><span>⏱ 累计练习</span><strong id="totalMinutes">0 分钟</strong><small>本机记录</small></article>
+          <article><span>🏆 历史最高</span><strong id="bestScore">--</strong><small>自评总分</small></article>
+          <article><span>🎙 录音</span><strong id="recordCount">0</strong><small>本次打开页面内</small></article>
+        </div>
+      </section>
+
+      <section id="songs" class="view">
+        <div class="sectionHead"><h2>全部诗歌</h2><input id="search" placeholder="搜索歌名、分类、Key..." /></div>
+        <div id="songList" class="songList"></div>
+      </section>
+
+      <section id="practice" class="view">
+        <div class="playerShell">
+          <div class="practicePanel">
+            <div class="songHeader">
+              <div><span class="tag">Now Practicing</span><h2 id="songTitle">永活盼望</h2><p id="songMeta">Living Hope · Key C · ♩=71</p></div>
+              <button id="favInSong" class="pill">☆</button>
+            </div>
+            <audio id="audio" controls preload="metadata"></audio>
+            <div class="controls">
+              <button id="back5">-5s</button><button id="playBtn">▶ / ⏸</button><button id="fwd5">+5s</button>
+              <label>速度 <select id="rate"><option>0.6</option><option>0.75</option><option>0.85</option><option selected>1</option><option>1.1</option><option>1.25</option></select></label>
+            </div>
+            <div class="abBox">
+              <button id="setA">设 A 点</button><button id="setB">设 B 点</button><button id="loopBtn">A-B 循环：关</button><small id="abStatus">A --:-- / B --:--</small>
+            </div>
+            <div class="metronome">
+              <strong>节拍器</strong><button id="minusTempo">−</button><span id="tempoNum">71</span><button id="plusTempo">+</button><button id="metroBtn">Start</button>
+            </div>
+            <div class="recorder">
+              <strong>录音回听</strong><button id="recBtn">🎙 开始录音</button><audio id="recAudio" controls></audio>
+            </div>
+          </div>
+
+          <div class="tabsPanel">
+            <div class="tabs"><button class="tab active" data-tab="scoreTab">歌谱</button><button class="tab" data-tab="lyricsTab">歌词</button><button class="tab" data-tab="ratingTab">打分</button><button class="tab" data-tab="notesTab">笔记</button></div>
+            <div id="scoreTab" class="tabBody show"><img id="scoreImg" class="scoreImg" alt="歌谱" /></div>
+            <div id="lyricsTab" class="tabBody"><div id="lyrics" class="lyrics"></div></div>
+            <div id="ratingTab" class="tabBody">
+              <h3>本次练习自评</h3>
+              <div id="ratingForm" class="ratingForm"></div>
+              <button id="saveRating" class="primary">保存本次评分</button>
+              <div id="ratingResult" class="result"></div>
+              <h3>历史记录</h3><div id="history" class="history"></div>
+            </div>
+            <div id="notesTab" class="tabBody"><textarea id="notes" placeholder="写下换气、节奏、情感表达、老师提醒等... "></textarea><button id="saveNotes" class="primary">保存笔记</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="report" class="view"><h2>成长报告</h2><div id="reportBox" class="reportBox"></div></section>
+      <section id="library" class="view"><h2>敬拜资料库</h2><div class="library"><article><h3>永活盼望 Living Hope</h3><p>主题：在黑暗、罪、死亡和无助中，因 YS 的复活得着永活盼望。</p><p>适合：复活节、回应诗、见证分享、主日敬拜。</p><p>练习重点：副歌节奏稳定，句尾不要抢拍；情感从低处呼求逐步推向得胜宣告。</p></article></div></section>
+      <section id="settings" class="view"><h2>设置</h2><div class="library"><article><h3>本机保存</h3><p>收藏、评分、练习时长、笔记都只保存在当前浏览器。换电脑或清除浏览器缓存后，记录不会同步。</p></article></div></section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
