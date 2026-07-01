@@ -6,7 +6,7 @@ function load(){try{return JSON.parse(localStorage.getItem(storeKey))||{favorite
 function save(){localStorage.setItem(storeKey,JSON.stringify(state));renderStats();}
 function today(){return new Date().toISOString().slice(0,10)}
 function touchPractice(min=0){const t=today(); if(state.lastDate!==t){const y=new Date();y.setDate(y.getDate()-1); const yd=y.toISOString().slice(0,10); state.streak=state.lastDate===yd?(state.streak||0)+1:1; state.lastDate=t;} if(current){state.minutes[current.id]=(state.minutes[current.id]||0)+min;} save();}
-async function init(){ if(state.dark) document.body.classList.add('dark'); songs=await fetch('data/songs.json').then(r=>r.json()); current=songs[0]; setupSong(current); renderSongs(); buildRating(); bind(); renderStats(); showView('home'); }
+async function init(){ if(state.dark) document.body.classList.add('dark'); songs=await fetch('songs.json').then(r=>r.json()); current=songs[0]; setupSong(current); renderSongs(); buildRating(); bind(); renderStats(); showView('home'); }
 function bind(){
  $$('.nav').forEach(b=>b.onclick=()=>showView(b.dataset.view)); $$('[data-open-song]').forEach(b=>b.onclick=()=>{setupSong(songs.find(s=>s.id===b.dataset.openSong));showView('practice')});
  $('#themeBtn').onclick=()=>{document.body.classList.toggle('dark');state.dark=document.body.classList.contains('dark');$('#themeBtn').textContent=state.dark?'☀️ 浅色':'🌙 深色';save()};
